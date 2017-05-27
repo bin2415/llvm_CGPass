@@ -9,154 +9,54 @@
 
 
 
-
-std::string getFunctionName(Function *f)
-
-{
-
-	//DISubprogram *disubprogram = f->getSubprogram();
-
-	//if (disubprogram)
-
-	//{
-
-	//	return disubprogram->getName().str();
-
-	//}
-
-	std::string result = f->getName().str();
-
-	return result;
-
-
-
-	//return "";
-
-}
-
-void CallGraph::recur(Function *func, std::set<Function *> &done) const
-
-{
-
-	//如果已经遍历过，就返回
-
-	if (done.count(func) == 1)
-
-		return;
-
-	if (m_map.find(func) != m_map.end())
-
-	{
-
-		for (Function *f : m_map.find(func)->second)
-
-		{
-
-			errs() << getFunctionName(func) << "->" << getFunctionName(f) << "\n";
-
-			recur(f, done);
-
-		}
-
+void CallGraph::printNode(std::string dotString) const {
+	for (Function* f : valueList) {
+		//dotString += "Node" + f;
 	}
-
-	
-
-}
-
-
-
-void CallGraph::recurDot(Function *func, std::set<Function *> &done, std::string &s) const
-
-{
-
-	if (done.count(func) == 1) return;
-
-	done.insert(func);
-
-	if (m_map.find(func) != m_map.end())
-
-	{
-
-		for (Function *f : m_map.find(func)->second)
-
-		{
-
-			s += getFunctionName(func) + "->" + getFunctionName(f) + ";\n";
-
-			recurDot(f, done, s);
-
-		}
-
-	}
-
-}
-
-
-
-void CallGraph::print() const {
-
-	errs() << "print the Call Graph" << "\n";
-
-	std::set<Function*> done;
-
-	recur(mMain, done);
-
 }
 
 
 
 void CallGraph::dump() const {
 
+	std::error_code error;
+	enum sys::fs::OpenFlags F_None;
+	StringRef fileName("CG.dot");
+	raw_fd_ostream file(fileName, error, F_None);
+
 	std::string dotString = "";
 
-	dotString += "digraph {\n";
+	file << "digraph \"Call Graph\"{\n";
+	file << "label=\"Call Graph\";\n";
 
-	std::set<Function *>done;
+	for (Function* f : valueList) {
+		file << "Node" << f << " [shape=record, label=\"{" << f->getName() << "}\"];\n";
+	}
 
-	recurDot(mMain, done, dotString);
-
-	dotString += "}\n";
-
-
-
-	std::ofstream os;
-
-	os.open("CG.dot");
-
-	if (os.is_open())
-
-	{
-
-		os << dotString << "\n";
-
-		os.close();
-
-		errs() << "Call Graph Done to CG.dot\n";
+	for (auto pairs : m_map) {
+		for (Function* second : pairs.second) {
+			file << "Node" << pairs.first << " -> " << "Node" << second << ";\n";
+		}
 
 	}
 
-	else
-
-	{
-
-		errs() << "Error: Can't Open the CG.dot\n";
-
-	}
+	file <<  "}\n";
+	file.close();
 
 }
 
 
 
-bool CGPass::runOnModule(Module &M){
+bool CGPass::runOnModule(Module &M) {
 
 	Function *main = M.getFunction("main");
 
 	G = new CallGraph(main);
-
+	G->valueList.push_back(main);
 	if (!main) return false;
 
 	std::deque<Function*> list;
+
 
 	list.push_back(main);
 
@@ -170,7 +70,7 @@ bool CGPass::runOnModule(Module &M){
 
 		{
 
-			
+
 
 			for (BasicBlock::iterator Biter = iter->begin(); Biter != iter->end(); ++Biter)
 
@@ -191,20 +91,16 @@ bool CGPass::runOnModule(Module &M){
 					{
 
 						//errs() <<"instruction1\n";
+						//errs() <<"instruction2\n";
 
-						//DISubprogram *dissubprogram = called->getSubprogram();
+						G->AddEdge(func, called);
 
-						//if (dissubprogram)
+						if (!G->hasFunction(called))
 
-						//{
-
-							//errs() <<"instruction2\n";
-
-							G->AddEdge(func, called);
-
-							if (!G->hasFunction(called))
-
-								list.push_back(called);
+						{
+							list.push_back(called);
+							G->valueList.push_back(called);
+						}
 
 						//}
 
@@ -224,11 +120,14 @@ bool CGPass::runOnModule(Module &M){
 
 					{
 
-							G->AddEdge(func, called);
+						G->AddEdge(func, called);
 
-							if (!G->hasFunction(called))
+						if (!G->hasFunction(called))
 
-								list.push_back(called);
+						{
+							list.push_back(called);
+							G->valueList.push_back(called);
+						}
 
 					}
 
