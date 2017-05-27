@@ -23,39 +23,41 @@ namespace {
 			m_map[f].insert(t);
 		}
 
-		//´òÓ¡CallGraph¼°ÆäĞÅÏ¢
+		//æ‰“å°CallGraphåŠå…¶ä¿¡æ¯
 		void print() const;
 
-		//½«CallgraphÊä³öµ½dotÍ¼ÖĞ
+		//å°†Callgraphè¾“å‡ºåˆ°dotå›¾ä¸­
 		void dump() const;
-		bool hasFunction(Function *func) { std::map<Function*, std::set<Function*> >::iterator iter = m_map.find(func);
-		if (iter == m_map.end())
-			return false;
-		return true;
-
+		bool hasFunction(Function *func) {
+			std::map<Function*, std::set<Function*> >::iterator iter = m_map.find(func);
+			if (iter == m_map.end())
+				return false;
+			return true;
 		}
 		std::map<Function*, std::set<Function*> > m_map;
-		//std::string dotString;
-		//std::string getFunctionName(Function* f);
+		void printNode(std::string dotString) const;
+		std::list<Function*> valueList;
 	private:
-		Function* mMain; //Ö÷º¯Êı
+		Function* mMain; //ä¸»å‡½æ•°
 		
+
 		unsigned int edge_count = 0;
-		
-		void recur(Function *func, std::set<Function*> &done) const;
-		void recurDot(Function* func, std::set<Function*> &done, std::string &s) const;
+
 
 	};
 
-	
+
 	class CGPass : public ModulePass
 	{
 	public:
 		static char ID;
-		CGPass() : ModulePass(ID) {}
+		CGPass() : ModulePass(ID){}
 		virtual bool runOnModule(Module &M) override;
+		
 	private:
 		CallGraph *G;
+		
+
 	};
 	char CGPass::ID = 0;
 }
